@@ -1,4 +1,6 @@
 # import selenium drivers
+import asyncio
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -20,14 +22,11 @@ import re
 import patch
 
 
-class GoogleImageScraper:
-    def __init__(self, url, webdriver_path, image_path, search_key="image", number_of_images=1, headless=True,
-                 min_resolution=(0, 0), max_resolution=(1920, 1080)):
+class ImageScraper:
+    def __init__(self, url, webdriver_path, image_path, number_of_images=1, headless=True,
+                 min_resolution=(0, 0), max_resolution=(1920, 1080),keep_filenames=False):
         # check parameter types
-        image_path = os.path.join(image_path, search_key)
-        if (type(number_of_images) != int):
-            print("[Error] Number of images must be integer value.")
-            return
+        image_path = os.path.join(image_path, "images")
         if not os.path.exists(image_path):
             print("[INFO] Image path not found. Creating a new folder.")
             os.makedirs(image_path)
@@ -41,17 +40,14 @@ class GoogleImageScraper:
 
         for i in range(1):
             try:
-                # try going to www.google.hk
+                # try going to url
                 options = Options()
                 if headless:
                     options.add_argument('--headless')
                 driver = webdriver.Chrome(webdriver_path, chrome_options=options)
                 driver.set_window_size(1400, 1050)
                 driver.get(url)
-                try:
-                    WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.ID, "W0wltc"))).click()
-                except Exception as e:
-                    continue
+
             except Exception as e:
                 # update chromedriver
                 pattern = '(\d+\.\d+\.\d+\.\d+)'
@@ -63,7 +59,6 @@ class GoogleImageScraper:
                         "version:https://chromedriver.chromium.org/downloads")
 
         self.driver = driver
-        self.search_key = search_key
         self.number_of_images = number_of_images
         self.webdriver_path = webdriver_path
         self.image_path = image_path
@@ -71,6 +66,8 @@ class GoogleImageScraper:
         self.headless = headless
         self.min_resolution = min_resolution
         self.max_resolution = max_resolution
+        self.search_key = "image"
+        self.keep_filenames = keep_filenames
 
     def find_image_urls(self):
         """
@@ -90,7 +87,10 @@ class GoogleImageScraper:
         search_string = '/html/body/div[3]/div/div[1]/div[1]/ul/li/img'
         running = True
         while running:
-        # for _ in range(300):
+            # if len(image_urls) > 10:
+            #     new_list = image_urls[:]
+            #     asyncio.run(self.save_images(new_list, self.keep_filenames))
+            # for _ in range(300):
             time.sleep(0.3)
 
             wait.until_not(EC.visibility_of_element_located((By.CSS_SELECTOR, "block-loading _j_stageloading")))
@@ -113,19 +113,14 @@ class GoogleImageScraper:
                 else:
                     break
         self.driver.quit()
-        print("[INFO] Downloading ended")
+        print("[INFO] URL gathering ended")
         return image_urls
 
-    def save_images(self, image_urls, keep_filenames):
-        print(keep_filenames)
+    def save_images(self, image_urls_og, keep_filenames):
+        image_urls = image_urls_og[:]
         # save images into file directory
         """
-            This function takes in an array of image urls and save it into the given image path/directory.
-            Example:
-                google_image_scraper = GoogleImageScraper("webdriver_path","image_path","search_key",number_of_photos)
-                image_urls=["https://example_1.jpg","https://example_2.jpg"]
-                google_image_scraper.save_images(image_urls)
-
+          
         """
         print("[INFO] Saving image, please wait...")
         failed_downloads = []
@@ -153,9 +148,9 @@ class GoogleImageScraper:
                             image_from_web.save(image_path, save_all=True)
                         except OSError:
                             rgb_im = image_from_web.convert('RGB')
-                            rgb_im.save(image_path,save_all=True)
+                            rgb_im.save(image_path, save_all=True)
                         image_resolution = image_from_web.size
-                        if image_resolution != None:
+                        if image_resolution is not None:
                             if image_resolution[0] < self.min_resolution[0] or image_resolution[1] < \
                                     self.min_resolution[1] or image_resolution[0] > self.max_resolution[0] or \
                                     image_resolution[1] > self.max_resolution[1]:
@@ -168,14 +163,13 @@ class GoogleImageScraper:
                 failed_downloads.append(image_url)
                 pass
         print("--------------------------------------------------")
-        if len(failed_downloads)!=0:
+        if len(failed_downloads) != 0:
             with open('failed_downloads.txt', 'w') as file:
                 # Write each string to the file, separated by a new line character
                 for index, string in enumerate(failed_downloads):
-                    file.write(str(index)+'. '+string + '\n')
+                    file.write(str(index) + '. ' + string + '\n')
             print(
                 f'Please note that some photos might not be downloaded,'
                 f' check file "failed_downloads" for such images')
         print(
             f'[INFO] Downloads completed.')
-
