@@ -1,9 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Jul 18 13:01:02 2020
 
-@author: OHyic
-"""
 #import selenium drivers
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -26,7 +21,7 @@ import re
 import patch
 
 class GoogleImageScraper():
-    def __init__(self, webdriver_path, image_path, search_key="cat", number_of_images=1, headless=True, min_resolution=(0, 0), max_resolution=(1920, 1080), max_missed=10):
+    def __init__(self, url, webdriver_path, image_path, search_key="cat", number_of_images=1, headless=True, min_resolution=(0, 0), max_resolution=(1920, 1080), max_missed=10):
         #check parameter types
         image_path = os.path.join(image_path, search_key)
         if (type(number_of_images)!=int):
@@ -50,7 +45,7 @@ class GoogleImageScraper():
                     options.add_argument('--headless')
                 driver = webdriver.Chrome(webdriver_path, chrome_options=options)
                 driver.set_window_size(1400,1050)
-                driver.get("https://www.google.hk")
+                driver.get(url)
                 try:
                     WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.ID, "W0wltc"))).click()
                 except Exception as e:
@@ -68,7 +63,7 @@ class GoogleImageScraper():
         self.number_of_images = number_of_images
         self.webdriver_path = webdriver_path
         self.image_path = image_path
-        self.url = "https://www.google.hk/search?q=%s&source=lnms&tbm=isch&sa=X&ved=2ahUKEwie44_AnqLpAhUhBWMBHUFGD90Q_AUoAXoECBUQAw&biw=1920&bih=947"%(search_key)
+        self.url = url
         self.headless=headless
         self.min_resolution = min_resolution
         self.max_resolution = max_resolution
@@ -77,85 +72,31 @@ class GoogleImageScraper():
     def find_image_urls(self):
         """
             This function search and return a list of image urls based on the search key.
-            Example:
-                google_image_scraper = GoogleImageScraper("webdriver_path","image_path","search_key",number_of_photos)
-                image_urls = google_image_scraper.find_image_urls()
-
         """
         print("[INFO] Gathering image links")
         self.driver.get(self.url)
+        self.driver.find_element_by_xpath('//*[@id="container"]/li[1]').click()
+        time.sleep(3)
         image_urls=[]
         count = 0
         missed_count = 0
         indx_1 = 0
         indx_2 = 0
-        search_string = '//*[@id="islrg"]/div[1]/div[%s]/a[1]/div[1]/img'
+        search_string = '//*[@id="_j_stageimg"]'
         time.sleep(3)
         while self.number_of_images > count and missed_count < self.max_missed:
-            if indx_2 > 0:
-                try:
-                    imgurl = self.driver.find_element(By.XPATH, search_string%(indx_1,indx_2+1))
-                    imgurl.click()
-                    indx_2 = indx_2 + 1
-                    missed_count = 0
-                except Exception:
-                    try:
-                        imgurl = self.driver.find_element(By.XPATH, search_string%(indx_1+1,1))
-                        imgurl.click()
-                        indx_2 = 1
-                        indx_1 = indx_1 + 1
-                    except:
-                        indx_2 = indx_2 + 1
-                        missed_count = missed_count + 1
-            else:
-                try:
-                    imgurl = self.driver.find_element(By.XPATH, search_string%(indx_1+1))
-                    imgurl.click()
-                    missed_count = 0
-                    indx_1 = indx_1 + 1    
-                except Exception:
-                    try:
-                        imgurl = self.driver.find_element(By.XPATH, '//*[@id="islrg"]/div[1]/div[%s]/div[%s]/a[1]/div[1]/img'%(indx_1,indx_2+1))
-                        imgurl.click()
-                        missed_count = 0
-                        indx_2 = indx_2 + 1
-                        search_string = '//*[@id="islrg"]/div[1]/div[%s]/div[%s]/a[1]/div[1]/img'
-                    except Exception:
-                        indx_1 = indx_1 + 1
-                        missed_count = missed_count + 1
-                    
-            try:
-                #select image from the popup
-                time.sleep(1)
-                class_names = ["n3VNCb","iPVvYb","r48jcc","pT0Scc"]
-                images = [self.driver.find_elements(By.CLASS_NAME, class_name) for class_name in class_names if len(self.driver.find_elements(By.CLASS_NAME, class_name)) != 0 ][0]
-                for image in images:
-                    #only download images that starts with http
-                    src_link = image.get_attribute("src")
-                    if(("http" in src_link) and (not "encrypted" in src_link)):
-                        print(
-                            f"[INFO] {self.search_key} \t #{count} \t {src_link}")
-                        image_urls.append(src_link)
-                        count +=1
-                        break
-            except Exception:
-                print("[INFO] Unable to get link")
+            imgurl = self.driver.find_element(By.XPATH, search_string)
+            imgurl.click()
+            indx_2 = indx_2 + 1
+            missed_count = 0
 
-            try:
-                #scroll page to load next image
-                if(count%3==0):
-                    self.driver.execute_script("window.scrollTo(0, "+str(indx_1*60)+");")
-                element = self.driver.find_element(By.CLASS_NAME,"mye4qd")
-                element.click()
-                print("[INFO] Loading next page")
-                time.sleep(3)
-            except Exception:
-                time.sleep(1)
+
+
 
 
 
         self.driver.quit()
-        print("[INFO] Google search ended")
+        print("[INFO] Downloading ended")
         return image_urls
 
     def save_images(self,image_urls, keep_filenames):

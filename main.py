@@ -6,6 +6,7 @@ from patch import webdriver_executable
 
 def worker_thread(search_key):
     image_scraper = GoogleImageScraper(
+        url,
         webdriver_path,
         image_path,
         search_key,
@@ -22,22 +23,22 @@ def worker_thread(search_key):
 
 
 # Define file path
-webdriver_path = os.path.normpath(os.path.join(os.getcwd(), 'webdriver', webdriver_executable()))
 image_path = os.path.normpath(os.path.join(os.getcwd(), 'photos'))
+webdriver_path = os.path.normpath(os.path.join(os.getcwd(), 'webdriver', webdriver_executable()))
 
 # Add new search key into array ["cat","t-shirt","apple","orange","pear","fish"]
 search_keys = list({"cat"})
 
 # Parameters
-number_of_images = 1200  # Desired number of images
-headless = True  # True = No Chrome GUI
+number_of_images = 2  # Desired number of images
+headless = False  # True = No Chrome GUI
 min_resolution = (0, 0)  # Minimum desired image resolution
 max_resolution = (9999, 9999)  # Maximum desired image resolution
-max_missed = 200  # Max number of failed images before exit
+max_missed = 20  # Max number of failed images before exit
 number_of_workers = 10  # Number of threads used
 keep_filenames = False  # Keep original URL image filenames
 
-
+url = "https://www.mafengwo.cn/photo/poi/7048865.html"
 # Run each search_key in a separate thread
 # Automatically waits for all threads to finish
 # Removes duplicate strings from search_keys

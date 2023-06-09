@@ -42,7 +42,7 @@ def download_lastest_chromedriver(current_chrome_version=""):
         url = 'https://chromedriver.chromium.org/downloads'
         base_driver_url = 'https://chromedriver.storage.googleapis.com/'
         file_name = 'chromedriver_' + get_platform_filename()
-        pattern = 'https://.*?path=(\d+\.\d+\.\d+\.\d+)'
+        pattern = 'https://.*?path=(    \d+\.\d+\.\d+\.\d+)'
     
         # Download latest chromedriver.
         stream = urllib.request.urlopen(url)

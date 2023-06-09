@@ -65,12 +65,12 @@ class TestCases(unittest.TestCase):
         self.assertEqual(len(os.listdir(self.temp_dir.name + "/cat")), 1)
 
     def test_more_than_100_images_with_multithreading(self):
+        main.headless = False
         main.search_keys = list({"cat"})
         main.number_of_images = 220
         main.number_of_workers = 10
         main.main()
         self.assertTrue(len(os.listdir(self.temp_dir.name + "/cat")) >= 200)
-
 
     def test_resolution_limits(self):
         main.search_keys = list({"cat"})
@@ -85,8 +85,6 @@ class TestCases(unittest.TestCase):
                     resolution = img.size
                     self.assertTrue(main.min_resolution <= resolution <= main.max_resolution,
                                     f"{filename} has an invalid resolution of {resolution}")
-
-
 
 
 if __name__ == '__main__':
