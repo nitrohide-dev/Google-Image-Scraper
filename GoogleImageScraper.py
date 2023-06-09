@@ -20,9 +20,9 @@ import re
 import patch
 
 
-class GoogleImageScraper():
-    def __init__(self, url, webdriver_path, image_path, search_key="cat", number_of_images=1, headless=True,
-                 min_resolution=(0, 0), max_resolution=(1920, 1080), max_missed=10):
+class GoogleImageScraper:
+    def __init__(self, url, webdriver_path, image_path, search_key="image", number_of_images=1, headless=True,
+                 min_resolution=(0, 0), max_resolution=(1920, 1080)):
         # check parameter types
         image_path = os.path.join(image_path, search_key)
         if (type(number_of_images) != int):
@@ -70,32 +70,47 @@ class GoogleImageScraper():
         self.headless = headless
         self.min_resolution = min_resolution
         self.max_resolution = max_resolution
-        self.max_missed = max_missed
 
     def find_image_urls(self):
         """
             This function search and return a list of image urls based on the search key.
         """
+        wait = WebDriverWait(self.driver, 10)
         image_urls = []
         print("[INFO] Gathering image links")
         self.driver.get(self.url)
-        self.driver.find_element_by_xpath('//*[@id="container"]/li[1]').click()
+        try:
+            image_url = self.driver.find_element_by_xpath('/html/body/div[3]/div/ul/li[1]/a[1]').get_attribute("href")
+            print(image_url)
+            self.driver.get(image_url)
+        except Exception as e:
+            print(e)
         time.sleep(3)
         search_string = '/html/body/div[3]/div/div[1]/div[1]/ul/li/img'
-        while True:
-            try:
-                image = self.driver.find_element(By.ID, '_j_stageimg')
-            except Exception as e:
-                print(e)
-            src_link = image.get_attribute("src")
-            print(src_link)
-            try:
-                button = self.driver.find_element(By.XPATH, "/html/body/div[3]/div/div[1]/div[1]/a[2]")
-                button.click()
-                time.sleep(1)
-            except Exception as e:
-                print("Scanning finished.")
-                break
+        running = True
+        while running:
+        # for _ in range(10):
+            time.sleep(0.3)
+
+            wait.until_not(EC.visibility_of_element_located((By.CSS_SELECTOR, "block-loading _j_stageloading")))
+            for i in range(3):
+                image = self.driver.find_element_by_xpath(search_string)
+                src_link = image.get_attribute("src")
+                if src_link is not None and src_link != "None":
+                    image_urls.append(src_link)
+                    break
+                time.sleep(0.2)
+            for i in range(3):
+                try:
+                    button = self.driver.find_element(By.XPATH, "/html/body/div[3]/div/div[1]/div[1]/a[2]")
+                    button.click()
+                    time.sleep(1)
+                except Exception as e:
+                    print("Button not found.")
+                    if i == 2:
+                        running = False
+                else:
+                    break
         self.driver.quit()
         print("[INFO] Downloading ended")
         return image_urls
@@ -112,6 +127,7 @@ class GoogleImageScraper():
 
         """
         print("[INFO] Saving image, please wait...")
+        failed_downloads = []
         for indx, image_url in enumerate(image_urls):
             try:
                 print("[INFO] Image url:%s" % (image_url))
@@ -148,7 +164,17 @@ class GoogleImageScraper():
                         image_from_web.close()
             except Exception as e:
                 print("[ERROR] Download failed: ", e)
+                failed_downloads.append(image_url)
                 pass
         print("--------------------------------------------------")
+        if len(failed_downloads)!=0:
+            with open('failed_downloads.txt', 'w') as file:
+                # Write each string to the file, separated by a new line character
+                for index, string in enumerate(failed_downloads):
+                    file.write(str(index)+'. '+string + '\n')
+            print(
+                f'Please note that some photos might not be downloaded,'
+                f' check file "failed_downloads" for such images')
         print(
-            "[INFO] Downloads completed. Please note that some photos were not downloaded as they were not in the correct format (e.g. jpg, jpeg, png)")
+            f'[INFO] Downloads completed.')
+
