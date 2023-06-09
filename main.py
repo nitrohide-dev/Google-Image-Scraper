@@ -11,7 +11,6 @@ def worker_thread(url):
         url,
         webdriver_path,
         image_path,
-        number_of_images,
         headless,
         min_resolution,
         max_resolution)
@@ -20,16 +19,13 @@ def worker_thread(url):
 
     # Release resources
     del image_scraper
-
-
-urls = list({"https://www.mafengwo.cn/photo/poi/7048865.html"})
 # Define file path
 image_path = os.path.normpath(os.path.join(os.getcwd(), 'photos'))
 webdriver_path = os.path.normpath(os.path.join(os.getcwd(), 'webdriver', webdriver_executable()))
 
+urls = list({"https://www.mafengwo.cn/photo/poi/7048865.html"})
 
 # Parameters
-number_of_images = 2  # Desired number of images
 headless = False  # True = No Chrome GUI
 min_resolution = (0, 0)  # Minimum desired image resolution
 max_resolution = (9999, 9999)  # Maximum desired image resolution

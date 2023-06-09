@@ -43,7 +43,7 @@ class GoogleImageScraper:
             try:
                 # try going to www.google.hk
                 options = Options()
-                if (headless):
+                if headless:
                     options.add_argument('--headless')
                 driver = webdriver.Chrome(webdriver_path, chrome_options=options)
                 driver.set_window_size(1400, 1050)
@@ -59,7 +59,8 @@ class GoogleImageScraper:
                 is_patched = patch.download_lastest_chromedriver(version)
                 if (not is_patched):
                     exit(
-                        "[ERR] Please update the chromedriver.exe in the webdriver folder according to your chrome version:https://chromedriver.chromium.org/downloads")
+                        "[ERR] Please update the chromedriver.exe in the webdriver folder according to your chrome "
+                        "version:https://chromedriver.chromium.org/downloads")
 
         self.driver = driver
         self.search_key = search_key
