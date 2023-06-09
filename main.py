@@ -6,12 +6,11 @@ import logging
 logging.basicConfig(filename='myapp.log', level=logging.ERROR)
 
 
-def worker_thread(search_key):
+def worker_thread(url):
     image_scraper = GoogleImageScraper(
         url,
         webdriver_path,
         image_path,
-        search_key,
         number_of_images,
         headless,
         min_resolution,
@@ -23,12 +22,11 @@ def worker_thread(search_key):
     del image_scraper
 
 
-url = "https://www.mafengwo.cn/photo/poi/7048865.html"
+urls = list({"https://www.mafengwo.cn/photo/poi/7048865.html"})
 # Define file path
 image_path = os.path.normpath(os.path.join(os.getcwd(), 'photos'))
 webdriver_path = os.path.normpath(os.path.join(os.getcwd(), 'webdriver', webdriver_executable()))
 
-search_keys = list({"images"})
 
 # Parameters
 number_of_images = 2  # Desired number of images
@@ -44,7 +42,7 @@ keep_filenames = False  # Keep original URL image filenames
 
 def main():
     with concurrent.futures.ThreadPoolExecutor(max_workers=number_of_workers) as executor:
-        executor.map(worker_thread, search_keys)
+        executor.map(worker_thread, urls)
 
 
 if __name__ == '__main__':

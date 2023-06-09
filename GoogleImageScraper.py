@@ -89,7 +89,7 @@ class GoogleImageScraper:
         search_string = '/html/body/div[3]/div/div[1]/div[1]/ul/li/img'
         running = True
         while running:
-        # for _ in range(10):
+        # for _ in range(300):
             time.sleep(0.3)
 
             wait.until_not(EC.visibility_of_element_located((By.CSS_SELECTOR, "block-loading _j_stageloading")))
@@ -149,10 +149,10 @@ class GoogleImageScraper:
                             image_path = os.path.join(self.image_path, filename)
                             print(
                                 f"[INFO] {self.search_key} \t {indx} \t Image saved at: {image_path}")
-                            image_from_web.save(image_path)
+                            image_from_web.save(image_path, save_all=True)
                         except OSError:
                             rgb_im = image_from_web.convert('RGB')
-                            rgb_im.save(image_path)
+                            rgb_im.save(image_path,save_all=True)
                         image_resolution = image_from_web.size
                         if image_resolution != None:
                             if image_resolution[0] < self.min_resolution[0] or image_resolution[1] < \
