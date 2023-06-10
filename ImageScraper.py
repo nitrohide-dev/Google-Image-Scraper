@@ -24,7 +24,7 @@ import patch
 class ImageScraper:
 
     def __init__(self, url, webdriver_path, image_path, number_of_images=1, headless=True,
-                 min_resolution=(0, 0), max_resolution=(1920, 1080), keep_filenames=False, shift=0):
+                 min_resolution=(0, 0), max_resolution=(1920, 1080), keep_filenames=False, shift=1):
         # check parameter types
         image_path = os.path.join(image_path, url[1])
         if not os.path.exists(image_path):
@@ -70,6 +70,8 @@ class ImageScraper:
         self.keep_filenames = keep_filenames
         self.shift = shift
         self.total_images = int(driver.find_element_by_xpath('/html/body/div[2]/div[2]/div/span/i').text)
+        self.last_url = self.url
+        self.index = 0
 
     def find_image_urls(self):
         """
@@ -85,21 +87,22 @@ class ImageScraper:
             self.driver.get(image_url)
         except Exception as e:
             print(e)
+            self.driver.get(self.url)
         time.sleep(3)
         search_string = '/html/body/div[3]/div/div[1]/div[1]/ul/li/img'
         running = True
-        index = 0+self.shift
+        self.index = 0 + self.shift
         while running:
-            index += 1
-            progress_pct = index / self.total_images * 100
-            if index % 100 == 0:
-                print(f"Progress: {index}/{self.total_images} ({progress_pct:.1f}%)")
+            self.last_url = self.driver.current_url
+            self.index += 1
+            progress_pct = self.index / self.total_images * 100
+            if self.index % 100 == 0:
+                print(f"Progress: {self.index}/{self.total_images} ({progress_pct:.1f}%)")
             # if len(image_urls) > 10:
             #     new_list = image_urls[:]
             #     asyncio.run(self.save_images(new_list, self.keep_filenames))
             # for _ in range(100):
             time.sleep(0.3)
-
             wait.until_not(EC.visibility_of_element_located((By.CSS_SELECTOR, "block-loading _j_stageloading")))
             for i in range(3):
                 image = self.driver.find_element_by_xpath(search_string)
@@ -112,13 +115,12 @@ class ImageScraper:
                 try:
                     button = self.driver.find_element(By.XPATH, "/html/body/div[3]/div/div[1]/div[1]/a[2]")
                     button.click()
-                    time.sleep(1)
-                except Exception as e:
-                    print("Button not found.")
-                    if i == 2:
-                        running = False
-                else:
                     break
+                except Exception as e:
+                    time.sleep(1)
+                    print("Button not found.")
+                    if i == 9:
+                        running = False
         self.driver.quit()
         print("[INFO] URL gathering ended")
         return image_urls
@@ -126,11 +128,11 @@ class ImageScraper:
     def save_images(self, image_urls_og, keep_filenames):
         image_urls = image_urls_og[:]
 
-        last_url = image_urls[:-1]
-        if os.path.exists('last_url.txt'):
-            os.remove('last_url.txt')
-            with open('last_url.txt', 'w') as file:
-                file.write(last_url + " " + len(image_urls) + 1)
+        # last_url = image_urls[:-1]
+        # if os.path.exists('last_url.txt'):
+        #     os.remove('last_url.txt')
+        #     with open('last_url.txt', 'w') as file:
+        #         file.write(last_url + " " + len(image_urls) + 1)
 
         # save images into file directory
         """
@@ -198,7 +200,7 @@ class ImageScraper:
         print(
             f'[INFO] Downloads completed.')
 
-        self.shift += len(image_urls) + 1
+        self.shift += len(image_urls)
 
     def check_failed_downloads(self):
         if os.path.exists('failed_downloads.txt'):
@@ -222,6 +224,8 @@ class ImageScraper:
     def run_scraper(self):
         while len(list(self.image_path)) < 0.95 * self.total_images:
             image_urls = self.find_image_urls()
+            if self.index == self.shift + 1:
+                break
             self.save_images(image_urls, self.keep_filenames)
             self.driver.quit()
             options = Options()
@@ -231,3 +235,4 @@ class ImageScraper:
             self.driver.set_window_size(1400, 1050)
             time.sleep(60)
             self.check_failed_downloads()
+            self.url = self.last_url
