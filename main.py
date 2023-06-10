@@ -1,6 +1,6 @@
 import os
 import concurrent.futures
-from GoogleImageScraper import ImageScraper
+from ImageScraper import ImageScraper
 from patch import webdriver_executable
 
 
@@ -13,9 +13,8 @@ def worker_thread(url):
         min_resolution=min_resolution,
         max_resolution=max_resolution,
         keep_filenames=keep_filenames)
-    image_urls = image_scraper.find_image_urls()
-    image_scraper.save_images(image_urls, keep_filenames)
 
+    image_scraper.run_scraper()
     # Release resources
     del image_scraper
 
@@ -24,15 +23,14 @@ def worker_thread(url):
 image_path = os.path.normpath(os.path.join(os.getcwd(), 'photos'))
 webdriver_path = os.path.normpath(os.path.join(os.getcwd(), 'webdriver', webdriver_executable()))
 
-
 """
-PUT YOUR URL HERE
-
+PUT YOUR URLS AND FOLDER NAMES BELOW
+Example: urls = [("web1.com","folder_name1"),("url2.com","folder_name2")]
 """
-urls = list({"https://www.mafengwo.cn/photo/poi/7048865.html"})
+urls = [("https://www.mafengwo.cn/photo/poi/7048865.html", "mywebsite")]
 
 # Parameters
-headless = False  # True = No Chrome GUI
+headless = True  # True = No Chrome GUI
 min_resolution = (0, 0)  # Minimum desired image resolution
 max_resolution = (9999, 9999)  # Maximum desired image resolution
 number_of_workers = 10  # Number of threads used

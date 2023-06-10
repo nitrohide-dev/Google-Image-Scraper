@@ -1,5 +1,4 @@
 # import selenium drivers
-import asyncio
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -23,10 +22,11 @@ import patch
 
 
 class ImageScraper:
+
     def __init__(self, url, webdriver_path, image_path, number_of_images=1, headless=True,
-                 min_resolution=(0, 0), max_resolution=(1920, 1080),keep_filenames=False):
+                 min_resolution=(0, 0), max_resolution=(1920, 1080), keep_filenames=False, shift=0):
         # check parameter types
-        image_path = os.path.join(image_path, "images")
+        image_path = os.path.join(image_path, url[1])
         if not os.path.exists(image_path):
             print("[INFO] Image path not found. Creating a new folder.")
             os.makedirs(image_path)
@@ -46,7 +46,7 @@ class ImageScraper:
                     options.add_argument('--headless')
                 driver = webdriver.Chrome(webdriver_path, chrome_options=options)
                 driver.set_window_size(1400, 1050)
-                driver.get(url)
+                driver.get(url[0])
 
             except Exception as e:
                 # update chromedriver
@@ -62,12 +62,14 @@ class ImageScraper:
         self.number_of_images = number_of_images
         self.webdriver_path = webdriver_path
         self.image_path = image_path
-        self.url = url
+        self.url = url[0]
         self.headless = headless
         self.min_resolution = min_resolution
         self.max_resolution = max_resolution
         self.search_key = "image"
         self.keep_filenames = keep_filenames
+        self.shift = shift
+        self.total_images = int(driver.find_element_by_xpath('/html/body/div[2]/div[2]/div/span/i').text)
 
     def find_image_urls(self):
         """
@@ -76,21 +78,26 @@ class ImageScraper:
         wait = WebDriverWait(self.driver, 10)
         image_urls = []
         print("[INFO] Gathering image links")
-        self.driver.get(self.url)
+
         try:
+            self.driver.get(self.url)
             image_url = self.driver.find_element_by_xpath('/html/body/div[3]/div/ul/li[1]/a[1]').get_attribute("href")
-            print(image_url)
             self.driver.get(image_url)
         except Exception as e:
             print(e)
         time.sleep(3)
         search_string = '/html/body/div[3]/div/div[1]/div[1]/ul/li/img'
         running = True
+        index = 0+self.shift
         while running:
+            index += 1
+            progress_pct = index / self.total_images * 100
+            if index % 100 == 0:
+                print(f"Progress: {index}/{self.total_images} ({progress_pct:.1f}%)")
             # if len(image_urls) > 10:
             #     new_list = image_urls[:]
             #     asyncio.run(self.save_images(new_list, self.keep_filenames))
-            # for _ in range(300):
+            # for _ in range(100):
             time.sleep(0.3)
 
             wait.until_not(EC.visibility_of_element_located((By.CSS_SELECTOR, "block-loading _j_stageloading")))
@@ -101,7 +108,7 @@ class ImageScraper:
                     image_urls.append(src_link)
                     break
                 time.sleep(0.2)
-            for i in range(3):
+            for i in range(10):
                 try:
                     button = self.driver.find_element(By.XPATH, "/html/body/div[3]/div/div[1]/div[1]/a[2]")
                     button.click()
@@ -118,6 +125,13 @@ class ImageScraper:
 
     def save_images(self, image_urls_og, keep_filenames):
         image_urls = image_urls_og[:]
+
+        last_url = image_urls[:-1]
+        if os.path.exists('last_url.txt'):
+            os.remove('last_url.txt')
+            with open('last_url.txt', 'w') as file:
+                file.write(last_url + " " + len(image_urls) + 1)
+
         # save images into file directory
         """
           
@@ -140,15 +154,23 @@ class ImageScraper:
                                 # join filename and extension
                                 filename = "%s.%s" % (name, image_from_web.format.lower())
                             else:
-                                filename = "%s%s.%s" % (search_string, str(indx), image_from_web.format.lower())
+                                filename = "%s%s.%s" % (
+                                    search_string, str(indx + self.shift), image_from_web.format.lower())
 
                             image_path = os.path.join(self.image_path, filename)
                             print(
-                                f"[INFO] {self.search_key} \t {indx} \t Image saved at: {image_path}")
-                            image_from_web.save(image_path, save_all=True)
+                                f"[INFO] {self.search_key} \t {indx + self.shift} \t Image saved at: {image_path}")
+                            if image_path.endswith(".gif"):
+                                image_from_web.save(image_path, save_all=True)
+                            else:
+                                image_from_web.save(image_path)
+
                         except OSError:
                             rgb_im = image_from_web.convert('RGB')
-                            rgb_im.save(image_path, save_all=True)
+                            if image_path.endswith(".gif"):
+                                rgb_im.save(image_path, save_all=True)
+                            else:
+                                rgb_im.save(image_path)
                         image_resolution = image_from_web.size
                         if image_resolution is not None:
                             if image_resolution[0] < self.min_resolution[0] or image_resolution[1] < \
@@ -163,6 +185,8 @@ class ImageScraper:
                 failed_downloads.append(image_url)
                 pass
         print("--------------------------------------------------")
+        if os.path.exists('failed_downloads.txt'):
+            os.remove('failed_downloads.txt')
         if len(failed_downloads) != 0:
             with open('failed_downloads.txt', 'w') as file:
                 # Write each string to the file, separated by a new line character
@@ -173,3 +197,37 @@ class ImageScraper:
                 f' check file "failed_downloads" for such images')
         print(
             f'[INFO] Downloads completed.')
+
+        self.shift += len(image_urls) + 1
+
+    def check_failed_downloads(self):
+        if os.path.exists('failed_downloads.txt'):
+            with open('failed_downloads.txt', 'r') as file:
+                # Read each line from the file
+                lines = file.readlines()
+            # Strip each line
+            failed_images = [line.split(' ', 1)[1] for line in lines]
+
+            while True:
+                self.save_images(failed_images, self.keep_filenames)
+                if os.path.exists('failed_downloads.txt'):
+                    with open('failed_downloads.txt', 'r') as file:
+                        # Read each line from the file
+                        lines = file.readlines()
+                        if len(lines) == 0:
+                            break
+                else:
+                    break
+
+    def run_scraper(self):
+        while len(list(self.image_path)) < 0.95 * self.total_images:
+            image_urls = self.find_image_urls()
+            self.save_images(image_urls, self.keep_filenames)
+            self.driver.quit()
+            options = Options()
+            if self.headless:
+                options.add_argument('--headless')
+            self.driver = webdriver.Chrome(self.webdriver_path, chrome_options=options)
+            self.driver.set_window_size(1400, 1050)
+            time.sleep(60)
+            self.check_failed_downloads()
