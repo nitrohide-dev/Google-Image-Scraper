@@ -1,8 +1,10 @@
 # import selenium drivers
 from PIL.ExifTags import TAGS, GPSTAGS
 from selenium import webdriver
+from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
@@ -245,18 +247,23 @@ class ImageScraper:
                 else:
                     break
 
+    def scroll_page_for_links(self):
+        elements = []
+        while len(elements) < 1000:
+            # Scroll down to the bottom of the webpage
+            actions = ActionChains(self.driver)
+            actions.send_keys(Keys.END).perform()
+            time.sleep(1)
+
+            # Find all the elements matching the xpath
+            elements = self.driver.find_elements(By.CLASS_NAME, "general-imgcol-item")
+            print(len(elements))
+        pass
+
     def run_scraper(self):
-        while self.shift < 0.95 * self.total_images:
-            image_urls = self.find_image_urls()
-            if self.index == self.shift + 1:
-                break
-            self.save_images(image_urls, self.keep_filenames)
-            self.driver.quit()
-            options = Options()
-            if self.headless:
-                options.add_argument('--headless')
-            self.driver = webdriver.Chrome(self.webdriver_path, chrome_options=options)
-            self.driver.set_window_size(1400, 1050)
-            time.sleep(10)
-            # self.check_failed_downloads()
-            self.url = self.last_url
+        self.driver.get("https://graph.baidu.com/s?sign=1267819133b6badfea32501686460968&f=all&tn=pc&tn=pc&idctag=gz&idctag=gz&sids=&sids=&logid=2823725675&logid=2823725675&pageFrom=graph_upload_bdbox&pageFrom=graph_upload_pcshitu&srcp=&gsid=&session_id=3291421184242315508&extUiData%5BisLogoShow%5D=1&tpl_from=pc&entrance=general")
+        wait = WebDriverWait(self.driver, 10)
+        element = wait.until(EC.visibility_of_element_located((By.XPATH, '/html/body/div[1]/div/div[3]/div/div[2]/div/div[1]/a[1]')))
+        image_urls = self.scroll_page_for_links()
+
+
