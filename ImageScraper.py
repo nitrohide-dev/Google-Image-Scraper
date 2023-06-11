@@ -118,7 +118,6 @@ class ImageScraper:
                     break
                 except Exception as e:
                     time.sleep(1)
-                    print("Button not found.")
                     if i == 9:
                         running = False
         self.driver.quit()
