@@ -27,7 +27,7 @@ webdriver_path = os.path.normpath(os.path.join(os.getcwd(), 'webdriver', webdriv
 put your urls and folder names below
 Example: urls = [("web1.com","folder_name1"),("url2.com","folder_name2")]
 """
-urls = [("https://www.mafengwo.cn/photo/poi/7048865.html", "mywebsite")]
+urls = [("https://www.mafengwo.cn/photo/poi/23372.html", "mywebsite")]
 
 # Parameters
 headless = True  # True = No Chrome GUI

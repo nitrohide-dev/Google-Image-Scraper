@@ -1,5 +1,5 @@
 # import selenium drivers
-
+from PIL.ExifTags import TAGS, GPSTAGS
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -19,6 +19,26 @@ import re
 
 # custom patch libraries
 import patch
+
+def get_exif_data(img):
+    exif_data = img._getexif()
+    if exif_data is None:
+        return None
+    exif = {}
+    gps_data = {}
+    for tag, value in exif_data.items():
+        decoded = TAGS.get(tag, tag)
+        if decoded == "GPSInfo":
+            for gps_tag in value:
+                gps_decoded = GPSTAGS.get(gps_tag, gps_tag)
+                gps_data[gps_decoded] = value[gps_tag]
+            exif[decoded] = gps_data
+        else:
+            exif[decoded] = value
+    if gps_data is not None:
+        if "GPSLatitude" not in gps_data or "GPSLongitude" not in gps_data:
+            return None
+        return gps_data
 
 
 class ImageScraper:
@@ -92,6 +112,7 @@ class ImageScraper:
         search_string = '/html/body/div[3]/div/div[1]/div[1]/ul/li/img'
         running = True
         self.index = 0 + self.shift
+        # for i in range(500):
         while running:
             self.last_url = self.driver.current_url
             self.index += 1
@@ -146,39 +167,43 @@ class ImageScraper:
                 image = requests.get(image_url, timeout=5)
                 if image.status_code == 200:
                     with Image.open(io.BytesIO(image.content)) as image_from_web:
-                        try:
-                            if (keep_filenames):
-                                # extact filename without extension from URL
-                                o = urlparse(image_url)
-                                image_url = o.scheme + "://" + o.netloc + o.path
-                                name = os.path.splitext(os.path.basename(image_url))[0]
-                                # join filename and extension
-                                filename = "%s.%s" % (name, image_from_web.format.lower())
-                            else:
-                                filename = "%s%s.%s" % (
-                                    search_string, str(indx + self.shift), image_from_web.format.lower())
+                        if get_exif_data(image_from_web) is not None:
+                            # if exif_data.items().__contains__()
+                            try:
+                                if keep_filenames:
+                                    # extact filename without extension from URL
+                                    o = urlparse(image_url)
+                                    image_url = o.scheme + "://" + o.netloc + o.path
+                                    name = os.path.splitext(os.path.basename(image_url))[0]
+                                    # join filename and extension
+                                    filename = "%s.%s" % (name, image_from_web.format.lower())
+                                else:
+                                    filename = "%s%s.%s" % (
+                                        search_string, str(indx + self.shift), image_from_web.format.lower())
 
-                            image_path = os.path.join(self.image_path, filename)
-                            print(
-                                f"[INFO] {self.search_key} \t {indx + self.shift} \t Image saved at: {image_path}")
-                            if image_path.endswith(".gif"):
-                                image_from_web.save(image_path, save_all=True)
-                            else:
-                                image_from_web.save(image_path)
+                                image_path = os.path.join(self.image_path, filename)
+                                print(
+                                    f"[INFO] {self.search_key} \t {indx + self.shift} \t Image saved at: {image_path}")
+                                if image_path.endswith(".gif"):
 
-                        except OSError:
-                            rgb_im = image_from_web.convert('RGB')
-                            if image_path.endswith(".gif"):
-                                rgb_im.save(image_path, save_all=True)
-                            else:
-                                rgb_im.save(image_path)
-                        image_resolution = image_from_web.size
-                        if image_resolution is not None:
-                            if image_resolution[0] < self.min_resolution[0] or image_resolution[1] < \
-                                    self.min_resolution[1] or image_resolution[0] > self.max_resolution[0] or \
-                                    image_resolution[1] > self.max_resolution[1]:
-                                image_from_web.close()
-                                os.remove(image_path)
+                                    image_from_web.save(image_path, save_all=True, exif=image_from_web.info.get("exif"))
+
+                                else:
+                                    image_from_web.save(image_path, exif=image_from_web.info.get("exif"))
+
+                            except OSError:
+                                rgb_im = image_from_web.convert('RGB')
+                                if image_path.endswith(".gif"):
+                                    rgb_im.save(image_path, save_all=True, exif=rgb_im.info.get("exif"))
+                                else:
+                                    rgb_im.save(image_path, exif=rgb_im.info.get("exif"))
+                            image_resolution = image_from_web.size
+                            if image_resolution is not None:
+                                if image_resolution[0] < self.min_resolution[0] or image_resolution[1] < \
+                                        self.min_resolution[1] or image_resolution[0] > self.max_resolution[0] or \
+                                        image_resolution[1] > self.max_resolution[1]:
+                                    image_from_web.close()
+                                    os.remove(image_path)
 
                         image_from_web.close()
             except Exception as e:
@@ -221,7 +246,7 @@ class ImageScraper:
                     break
 
     def run_scraper(self):
-        while len(list(self.image_path)) < 0.95 * self.total_images:
+        while self.shift < 0.95 * self.total_images:
             image_urls = self.find_image_urls()
             if self.index == self.shift + 1:
                 break
@@ -232,6 +257,6 @@ class ImageScraper:
                 options.add_argument('--headless')
             self.driver = webdriver.Chrome(self.webdriver_path, chrome_options=options)
             self.driver.set_window_size(1400, 1050)
-            time.sleep(60)
-            self.check_failed_downloads()
+            time.sleep(10)
+            # self.check_failed_downloads()
             self.url = self.last_url
