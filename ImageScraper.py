@@ -20,6 +20,7 @@ import re
 # custom patch libraries
 import patch
 
+
 def get_exif_data(img):
     exif_data = img._getexif()
     if exif_data is None:
@@ -43,7 +44,7 @@ def get_exif_data(img):
 
 class ImageScraper:
 
-    def __init__(self, url, webdriver_path, image_path, number_of_images=1, headless=True,
+    def __init__(self, url, webdriver_path, image_path, filter_by_gps, search_image, number_of_images=1, headless=True,
                  min_resolution=(0, 0), max_resolution=(1920, 1080), keep_filenames=False, shift=1):
         # check parameter types
         image_path = os.path.join(image_path, url[1])
@@ -92,6 +93,8 @@ class ImageScraper:
         self.total_images = int(driver.find_element_by_xpath('/html/body/div[2]/div[2]/div/span/i').text)
         self.last_url = self.url
         self.index = 0
+        self.search_image = search_image
+        self.filter_by_gps = filter_by_gps
 
     def find_image_urls(self):
         """
@@ -245,18 +248,20 @@ class ImageScraper:
                 else:
                     break
 
+    def search_for_picture(self):
+        self.driver.get(self.url)
+        wait = WebDriverWait(self.driver, 10)
+        element = wait.until(
+            EC.visibility_of_element_located((By.XPATH, '/html/body/div[1]/div/div/div[1]/div[2]/div/div/div[1]/form/a[1]')))
+        element.click()
+        time.sleep(1)
+
+        image_path = os.getcwd() + "/images/" + self.search_image
+        file_input_element = self.driver.find_element_by_class_name("general-upload-file")
+        file_input_element.send_keys(image_path)
+
     def run_scraper(self):
-        while self.shift < 0.95 * self.total_images:
-            image_urls = self.find_image_urls()
-            if self.index == self.shift + 1:
-                break
-            self.save_images(image_urls, self.keep_filenames)
-            self.driver.quit()
-            options = Options()
-            if self.headless:
-                options.add_argument('--headless')
-            self.driver = webdriver.Chrome(self.webdriver_path, chrome_options=options)
-            self.driver.set_window_size(1400, 1050)
-            time.sleep(10)
-            # self.check_failed_downloads()
-            self.url = self.last_url
+        self.search_for_picture()
+        image_urls = self.find_image_urls()
+        self.driver.quit()
+        self.save_images(image_urls, keep_filenames=self.keep_filenames)
