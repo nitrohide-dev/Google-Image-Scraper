@@ -8,6 +8,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
+import undetected_chromedriver as uc
 
 # import helper libraries
 import time
@@ -54,18 +55,13 @@ class ImageScraper:
             print("[INFO] Image path not found. Creating a new folder.")
             os.makedirs(image_path)
 
-        # check if chromedriver is installed
-        if (not os.path.isfile(webdriver_path)):
-            is_patched = patch.download_lastest_chromedriver()
-            if (not is_patched):
-                exit(
-                    "[ERR] Please update the chromedriver.exe in the webdriver folder according to your chrome version:https://chromedriver.chromium.org/downloads")
-
-        options = Options()
-        if headless:
-            options.add_argument('--headless')
-        driver = webdriver.Chrome(webdriver_path, chrome_options=options)
-        driver.set_window_size(1400, 1050)
+        options = uc.ChromeOptions()
+        options.headless = headless
+        options.add_experimental_option('excludeSwitches', ['enable-automation'])
+        options.add_experimental_option('useAutomationExtension', False)
+        driver = uc.Chrome(headless=False, use_subprocess=False, chrome_options=options)
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument",
+                               {'source': 'Object.defineProperty(navigator,"webdriver",{get:()=>undefind})'})
 
         self.driver = driver
         self.number_of_images = number_of_images
@@ -96,7 +92,6 @@ class ImageScraper:
         """
         print("[INFO] Saving image, please wait...")
         failed_downloads = []
-        breakpoint()
         for indx, image_url in enumerate(image_urls):
             try:
                 print("[INFO] Image url:%s" % (image_url))
@@ -197,8 +192,8 @@ class ImageScraper:
                     break
 
     def scroll_page_for_links(self):
-        # breakpoint()
         elements = []
+        number_of_elements = []
         while len(elements) < 1000:
             # Scroll down to the bottom of the webpage
             self.driver.execute_script("window.scrollBy(0, window.innerHeight)")
@@ -206,23 +201,27 @@ class ImageScraper:
             # Find all the elements matching the xpath
 
             elements = self.driver.find_elements(By.XPATH, "//a[@class='general-imgcol-item']/img")
-            print(len(elements))
+            number_of_elements.append(len(elements))
             time.sleep(1)
 
             # text_content = "没有更多"
             # tag_name = "div"
-            xpath_expression = "//*[contains(text(), '没有更多') and contains(@class, 'graph-similar-list-bottom-status')]"
-            try:
-                element = self.driver.find_element_by_xpath(xpath_expression)
-                if element is not None:
-                    style = element.get_attribute("style")
-                    if style == "":
-                        break
-            except Exception as e:
-                pass
+            # xpath_expression = "//*[contains(text(), '没有更多') and contains(@class, 'graph-similar-list-bottom-status')]"
+            # try:
+            #     element = self.driver.find_element_by_xpath(xpath_expression)
+            #     if element is not None:
+            #         style = element.get_attribute("style")
+            #         if style == "":
+            #             break
+            # except Exception as e:
+            #     pass
+            if len(number_of_elements) > 10:
+                last_10_elements = number_of_elements[-10:]
+                if all(element == last_10_elements[0] for element in last_10_elements):
+                    break
+
         img_links = list(map(lambda x: x.get_attribute("src"), elements))
         return img_links
-
     def search_for_picture(self):
         self.driver.get(self.url)
         wait = WebDriverWait(self.driver, 10)
@@ -232,7 +231,7 @@ class ImageScraper:
         time.sleep(1)
 
         image_path = os.getcwd() + "/images/" + self.search_image
-        file_input_element = self.driver.find_element_by_class_name("general-upload-file")
+        file_input_element = self.driver.find_element(By.CLASS_NAME,"general-upload-file")
         file_input_element.send_keys(image_path)
 
     def run_scraper(self):

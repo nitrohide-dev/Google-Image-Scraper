@@ -1,7 +1,11 @@
 import os
 import concurrent.futures
+import time
+
 from ImageScraper import ImageScraper
 from patch import webdriver_executable
+
+import undetected_chromedriver as uc
 
 
 def worker_thread(search_image):
@@ -19,6 +23,7 @@ def worker_thread(search_image):
     image_scraper.run_scraper()
     # Release resources
     del image_scraper
+    return True
 
 
 # Define file path
@@ -33,13 +38,25 @@ max_resolution = (9999, 9999)  # Maximum desired image resolution
 keep_filenames = False  # Keep original URL image filenames
 
 # PUT IMAGES TO SEARCH IN "images" folder and write their names here
-images = {"DSCN0010.jpg"}
-filter_by_gps = True   # True = only images with exif GPS data will be downloaded
+images = ["DSCN0010.jpg"]
+filter_by_gps = True  # True = only images with exif GPS data will be downloaded
+
+
+
 
 
 def main():
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(images)) as executor:
-        executor.map(worker_thread, images)
+    for image in images:
+        while True:
+            try:
+                result = worker_thread(image)
+                if result:
+                    break
+            except Exception as e:
+                print(f"[INFO] Bot window detected - restarting current search")
+                time.sleep(10)
+
+        time.sleep(15)
 
 
 if __name__ == '__main__':
