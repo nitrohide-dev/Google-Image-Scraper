@@ -1,5 +1,7 @@
 import os
 import concurrent.futures
+import time
+
 from ImageScraper import ImageScraper
 from patch import webdriver_executable
 
@@ -19,12 +21,13 @@ def worker_thread(search_image):
     image_scraper.run_scraper()
     # Release resources
     del image_scraper
+    return True
 
 
 # Define file path
 image_path = os.path.normpath(os.path.join(os.getcwd(), 'photos'))
 webdriver_path = os.path.normpath(os.path.join(os.getcwd(), 'webdriver', webdriver_executable()))
-url = ("https://graph.baidu.com/pcpage/index?tpl_from=pc", "baidu")
+url = ("https://pic.sogou.com/", "sogou")
 
 # Parameters
 headless = False  # True = No Chrome GUI
@@ -33,13 +36,28 @@ max_resolution = (9999, 9999)  # Maximum desired image resolution
 keep_filenames = False  # Keep original URL image filenames
 
 # PUT IMAGES TO SEARCH IN "images" folder and write their names here
-images = {"DSCN0010.jpg"}
-filter_by_gps = True   # True = only images with exif GPS data will be downloaded
+images = ["benis","two.jpeg", "three.jpeg"]
+filter_by_gps = True  # True = only images with exif GPS data will be downloaded
 
 
 def main():
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(images)) as executor:
-        executor.map(worker_thread, images)
+    for image in images:
+        if not os.path.exists(os.getcwd() + "/images/" + image ):
+            print(
+                f"[INFO] image {image} not found in /images/ folder. Please, verify that this image is in the folder.")
+            continue
+        print(f"[INFO] Starting search of {image} ")
+        running = True
+        while running:
+            try:
+                result = worker_thread(image)
+                if result:
+                    running = False
+            except Exception as e:
+                print(f"[INFO] Bot window or another error detected - restarting current search")
+                time.sleep(10)
+        print(f"[INFO] Image search of {image} has successfully finished.")
+        time.sleep(15)
 
 
 if __name__ == '__main__':

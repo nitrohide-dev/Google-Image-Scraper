@@ -52,13 +52,6 @@ class ImageScraper:
             print("[INFO] Image path not found. Creating a new folder.")
             os.makedirs(image_path)
 
-        # check if chromedriver is installed
-        if (not os.path.isfile(webdriver_path)):
-            is_patched = patch.download_lastest_chromedriver()
-            if (not is_patched):
-                exit(
-                    "[ERR] Please update the chromedriver.exe in the webdriver folder according to your chrome version:https://chromedriver.chromium.org/downloads")
-
         for i in range(1):
             try:
                 # try going to url
@@ -90,7 +83,6 @@ class ImageScraper:
         self.search_key = "image"
         self.keep_filenames = keep_filenames
         self.shift = shift
-        self.total_images = int(driver.find_element_by_xpath('/html/body/div[2]/div[2]/div/span/i').text)
         self.last_url = self.url
         self.index = 0
         self.search_image = search_image
@@ -104,14 +96,8 @@ class ImageScraper:
         image_urls = []
         print("[INFO] Gathering image links")
 
-        try:
-            self.driver.get(self.url)
-            image_url = self.driver.find_element_by_xpath('/html/body/div[3]/div/ul/li[1]/a[1]').get_attribute("href")
-            self.driver.get(image_url)
-        except Exception as e:
-            print(e)
-            self.driver.get(self.url)
-        time.sleep(3)
+        wait.until_not(EC.visibility_of_element_located((By.CSS_SELECTOR, "block-loading _j_stageloading")))
+
         search_string = '/html/body/div[3]/div/div[1]/div[1]/ul/li/img'
         running = True
         self.index = 0 + self.shift
@@ -119,9 +105,9 @@ class ImageScraper:
         while running:
             self.last_url = self.driver.current_url
             self.index += 1
-            progress_pct = self.index / self.total_images * 100
+            progress_pct = self.index / 1000 * 100
             if self.index % 100 == 0:
-                print(f"Progress: {self.index}/{self.total_images} ({progress_pct:.1f}%)")
+                print(f"Progress: {self.index}/{1000} ({progress_pct:.1f}%)")
             # if len(image_urls) > 10:
             #     new_list = image_urls[:]
             #     asyncio.run(self.save_images(new_list, self.keep_filenames))
@@ -252,12 +238,12 @@ class ImageScraper:
         self.driver.get(self.url)
         wait = WebDriverWait(self.driver, 10)
         element = wait.until(
-            EC.visibility_of_element_located((By.XPATH, '/html/body/div[1]/div/div/div[1]/div[2]/div/div/div[1]/form/a[1]')))
+            EC.visibility_of_element_located(
+                (By.XPATH, '/html/body/div/div/div/div[1]/div[2]/div/div/div[1]/form/a[1]')))
         element.click()
-        time.sleep(1)
-
+        time.sleep(2)
         image_path = os.getcwd() + "/images/" + self.search_image
-        file_input_element = self.driver.find_element_by_class_name("general-upload-file")
+        file_input_element = self.driver.find_element(By.XPATH, "//input[@type='file' and @accept='image/*']")
         file_input_element.send_keys(image_path)
 
     def run_scraper(self):
