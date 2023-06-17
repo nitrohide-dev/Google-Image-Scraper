@@ -16,7 +16,8 @@ def worker_thread(search_image):
         min_resolution=min_resolution,
         max_resolution=max_resolution,
         keep_filenames=keep_filenames,
-        filter_by_gps=filter_by_gps)
+        filter_by_gps=filter_by_gps
+        , number_of_images=number_of_images)
 
     image_scraper.run_scraper()
     # Release resources
@@ -34,6 +35,7 @@ headless = False  # True = No Chrome GUI
 min_resolution = (0, 0)  # Minimum desired image resolution
 max_resolution = (9999, 9999)  # Maximum desired image resolution
 keep_filenames = False  # Keep original URL image filenames
+number_of_images = 100  # Number of images to donwload
 
 # PUT IMAGES TO SEARCH IN "images" folder and write their names here
 images = ["sogou.jpg", "three.jpeg"]
@@ -42,7 +44,7 @@ filter_by_gps = True  # True = only images with exif GPS data will be downloaded
 
 def main():
     for image in images:
-        if not os.path.exists(os.getcwd() + "/images/" + image ):
+        if not os.path.exists(os.getcwd() + "/images/" + image):
             print(
                 f"[INFO] image {image} not found in /images/ folder. Please, verify that this image is in the folder.")
             continue

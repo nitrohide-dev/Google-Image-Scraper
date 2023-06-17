@@ -99,14 +99,14 @@ class ImageScraper:
         print("[INFO] Gathering image links")
 
         first_image = wait.until(EC.visibility_of_element_located((By.XPATH, "//ul[@class='figure-result-list']/li["
-                                                              "1]/div/a[1]")))
+                                                                             "1]/div/a[1]")))
         import datetime
 
         timestamp = int(datetime.datetime.now().timestamp() * 1000)
 
         self.driver.get(first_image.get_attribute("href"))
         time.sleep(0.5)
-        self.driver.find_element(By.XPATH,'//*[@id="imgArea"]/a[1]/span').click()
+        self.driver.find_element(By.XPATH, '//*[@id="imgArea"]/a[1]/span').click()
         running = True
         self.index = 0 + self.shift
         while running:
@@ -119,7 +119,8 @@ class ImageScraper:
             progress_pct = self.index / 1000 * 100
             if self.index % 100 == 0:
                 print(f"Progress: {self.index}/{1000} ({progress_pct:.1f}%)")
-
+            if self.index >= self.number_of_images:
+                break
             image = wait.until(EC.visibility_of_element_located((By.XPATH, '//*[@id="imgArea"]/div[3]/div/div/a/img')))
             for i in range(3):
                 src_link = image.get_attribute("src")
