@@ -49,7 +49,7 @@ class ImageScraper:
     def __init__(self, url, webdriver_path, image_path, filter_by_gps, search_image, number_of_images=1, headless=True,
                  min_resolution=(0, 0), max_resolution=(1920, 1080), keep_filenames=False, shift=1):
         # check parameter types
-        image_path = os.path.join(image_path, url[1])
+        image_path = os.path.join(image_path, search_image)
         if not os.path.exists(image_path):
             print("[INFO] Image path not found. Creating a new folder.")
             os.makedirs(image_path)
@@ -108,18 +108,18 @@ class ImageScraper:
         time.sleep(0.5)
         self.driver.find_element(By.XPATH, '//*[@id="imgArea"]/a[1]/span').click()
         running = True
-        self.index = 0 + self.shift
+        self.index = 0
         while running:
             # breakpoint()
             severe_warnings = [entry for entry in self.driver.get_log("browser") if
                                entry['level'] == 'SEVERE']
 
             self.last_url = self.driver.current_url
-            self.index += 1
-            progress_pct = self.index / 1000 * 100
-            if self.index % 100 == 0:
-                print(f"Progress: {self.index}/{1000} ({progress_pct:.1f}%)")
-            if self.index >= self.number_of_images:
+            index = len(set(image_urls))
+            progress_pct = index / self.number_of_images * 100
+            if index % self.number_of_images/100 == 0:
+                print(f"Progress: {index}/{self.number_of_images} ({progress_pct:.1f}%)")
+            if index >= self.number_of_images:
                 break
             image = wait.until(EC.visibility_of_element_located((By.XPATH, '//*[@id="imgArea"]/div[3]/div/div/a/img')))
             for i in range(3):
@@ -127,21 +127,21 @@ class ImageScraper:
                 if src_link is not None and src_link != "None":
                     if "sogou" in src_link:
                         current_link = src_link
-                        isnt_original = True
                         start_time = time.time()
-                        while isnt_original:
+                        while True:
                             elapsed_time = time.time() - start_time
-                            if elapsed_time > 15:
-                                isnt_original = False
+                            if elapsed_time > 5:
+                                image_urls.append(src_link)
+                                break
                             image = self.driver.find_element(By.XPATH, '//*[@id="imgArea"]/div[3]/div/div/a/img')
                             src_link = image.get_attribute("src")
                             if current_link != src_link:
                                 image_urls.append(src_link)
-                                isnt_original = False
+                                break
                             if len(severe_warnings) != 0:
                                 if severe_warnings[-1]['timestamp'] > timestamp:
                                     image_urls.append(src_link)
-                                    isnt_original = False
+                                    break
 
                             severe_warnings = [entry for entry in self.driver.get_log("browser") if
                                                entry['level'] == 'SEVERE']
@@ -163,21 +163,11 @@ class ImageScraper:
                         running = False
         self.driver.quit()
         print("[INFO] URL gathering ended")
-        return image_urls
+        return list(set(image_urls))
 
     def save_images(self, image_urls_og, keep_filenames):
         image_urls = image_urls_og[:]
 
-        # last_url = image_urls[:-1]
-        # if os.path.exists('last_url.txt'):
-        #     os.remove('last_url.txt')
-        #     with open('last_url.txt', 'w') as file:
-        #         file.write(last_url + " " + len(image_urls) + 1)
-
-        # save images into file directory
-        """
-          
-        """
         print("[INFO] Saving image, please wait...")
         failed_downloads = []
         for indx, image_url in enumerate(image_urls):
@@ -187,7 +177,7 @@ class ImageScraper:
                 image = requests.get(image_url, timeout=5)
                 if image.status_code == 200:
                     with Image.open(io.BytesIO(image.content)) as image_from_web:
-                        if get_exif_data(image_from_web) is not None:
+                        if get_exif_data(image_from_web) is not None or self.filter_by_gps is False:
                             # if exif_data.items().__contains__()
                             try:
                                 if keep_filenames:
@@ -199,24 +189,40 @@ class ImageScraper:
                                     filename = "%s.%s" % (name, image_from_web.format.lower())
                                 else:
                                     filename = "%s%s.%s" % (
-                                        search_string, str(indx + self.shift), image_from_web.format.lower())
+                                        search_string, str(indx+1), image_from_web.format.lower())
 
                                 image_path = os.path.join(self.image_path, filename)
                                 print(
-                                    f"[INFO] {self.search_key} \t {indx + self.shift} \t Image saved at: {image_path}")
-                                if image_path.endswith(".gif"):
+                                    f"[INFO] {self.search_key} \t {str(indx+1)} \t Image saved at: {image_path}")
+                                exif = image_from_web.info.get("exif")
+                                if self.filter_by_gps is True:
 
-                                    image_from_web.save(image_path, save_all=True, exif=image_from_web.info.get("exif"))
+                                    if image_path.endswith(".gif"):
 
+                                        image_from_web.save(image_path, save_all=True, exif=exif)
+
+                                    else:
+                                        image_from_web.save(image_path, exif=exif)
                                 else:
-                                    image_from_web.save(image_path, exif=image_from_web.info.get("exif"))
+                                    if image_path.endswith(".gif"):
+
+                                        image_from_web.save(image_path, save_all=True)
+
+                                    else:
+                                        image_from_web.save(image_path)
 
                             except OSError:
                                 rgb_im = image_from_web.convert('RGB')
-                                if image_path.endswith(".gif"):
-                                    rgb_im.save(image_path, save_all=True, exif=rgb_im.info.get("exif"))
+                                if self.filter_by_gps is True:
+                                    if image_path.endswith(".gif"):
+                                        rgb_im.save(image_path, save_all=True, exif=exif)
+                                    else:
+                                        rgb_im.save(image_path, exif=exif)
                                 else:
-                                    rgb_im.save(image_path, exif=rgb_im.info.get("exif"))
+                                    if image_path.endswith(".gif"):
+                                        rgb_im.save(image_path, save_all=True)
+                                    else:
+                                        rgb_im.save(image_path)
                             image_resolution = image_from_web.size
                             if image_resolution is not None:
                                 if image_resolution[0] < self.min_resolution[0] or image_resolution[1] < \
@@ -231,20 +237,18 @@ class ImageScraper:
                 failed_downloads.append(image_url)
                 pass
         print("--------------------------------------------------")
-        if os.path.exists('failed_downloads.txt'):
-            os.remove('failed_downloads.txt')
-        if len(failed_downloads) != 0:
-            with open('failed_downloads.txt', 'w') as file:
-                # Write each string to the file, separated by a new line character
-                for index, string in enumerate(failed_downloads):
-                    file.write(str(index) + '. ' + string + '\n')
-            print(
-                f'Please note that some photos might not be downloaded,'
-                f' check file "failed_downloads" for such images')
+        # if os.path.exists('failed_downloads.txt'):
+        #     os.remove('failed_downloads.txt')
+        # if len(failed_downloads) != 0:
+        #     with open('failed_downloads.txt', 'w') as file:
+        #         # Write each string to the file, separated by a new line character
+        #         for index, string in enumerate(failed_downloads):
+        #             file.write(str(index) + '. ' + string + '\n')
+        #     print(
+        #         f'Please note that some photos might not be downloaded,'
+        #         f' check file "failed_downloads" for such images')
         print(
             f'[INFO] Downloads completed.')
-
-        self.shift += len(image_urls)
 
     def check_failed_downloads(self):
         if os.path.exists('failed_downloads.txt'):

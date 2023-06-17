@@ -1,5 +1,4 @@
 import os
-import concurrent.futures
 import time
 
 from ImageScraper import ImageScraper
@@ -35,11 +34,11 @@ headless = False  # True = No Chrome GUI
 min_resolution = (0, 0)  # Minimum desired image resolution
 max_resolution = (9999, 9999)  # Maximum desired image resolution
 keep_filenames = False  # Keep original URL image filenames
-number_of_images = 100  # Number of images to donwload
+number_of_images = 15  # Number of images to download
 
 # PUT IMAGES TO SEARCH IN "images" folder and write their names here
-images = ["sogou.jpg", "three.jpeg"]
-filter_by_gps = True  # True = only images with exif GPS data will be downloaded
+images = ["sogou.jpg", "baidu2.jpeg", "baidutest.jpeg", "gpstest.jpeg"]
+filter_by_gps = True  # True = only images with exif GPS data will be saved
 
 
 def main():
@@ -64,3 +63,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

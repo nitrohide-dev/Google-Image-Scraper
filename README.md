@@ -1,6 +1,4 @@
-# scraper no. 2 
-
-Same dependencies as previous program
+# scraper no. 4
 
 ## Pre-requisites:
 1. Google Chrome
@@ -19,7 +17,6 @@ Same dependencies as previous program
        headless            = Chrome GUI behaviour. If True, there will be no Chrome window
        min_resolution      = Minimum desired image resolution
        max_resolution      = Maximum desired image resolution
-       number_of_workers   = Number of threads
        ```
 3. Run the program in the command line (or through an IDE of your choice)
     ```
