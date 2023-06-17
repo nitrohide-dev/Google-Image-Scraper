@@ -36,7 +36,7 @@ max_resolution = (9999, 9999)  # Maximum desired image resolution
 keep_filenames = False  # Keep original URL image filenames
 
 # PUT IMAGES TO SEARCH IN "images" folder and write their names here
-images = ["benis","two.jpeg", "three.jpeg"]
+images = ["sogou.jpg", "three.jpeg"]
 filter_by_gps = True  # True = only images with exif GPS data will be downloaded
 
 

@@ -1,8 +1,10 @@
 # import selenium drivers
 from PIL.ExifTags import TAGS, GPSTAGS
 from selenium import webdriver
+from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
@@ -96,37 +98,65 @@ class ImageScraper:
         image_urls = []
         print("[INFO] Gathering image links")
 
-        wait.until_not(EC.visibility_of_element_located((By.CSS_SELECTOR, "block-loading _j_stageloading")))
+        first_image = wait.until(EC.visibility_of_element_located((By.XPATH, "//ul[@class='figure-result-list']/li["
+                                                              "1]/div/a[1]")))
+        import datetime
 
-        search_string = '/html/body/div[3]/div/div[1]/div[1]/ul/li/img'
+        timestamp = int(datetime.datetime.now().timestamp() * 1000)
+
+        self.driver.get(first_image.get_attribute("href"))
+        time.sleep(0.5)
+        self.driver.find_element(By.XPATH,'//*[@id="imgArea"]/a[1]/span').click()
         running = True
         self.index = 0 + self.shift
-        # for i in range(500):
         while running:
+            # breakpoint()
+            severe_warnings = [entry for entry in self.driver.get_log("browser") if
+                               entry['level'] == 'SEVERE']
+
             self.last_url = self.driver.current_url
             self.index += 1
             progress_pct = self.index / 1000 * 100
             if self.index % 100 == 0:
                 print(f"Progress: {self.index}/{1000} ({progress_pct:.1f}%)")
-            # if len(image_urls) > 10:
-            #     new_list = image_urls[:]
-            #     asyncio.run(self.save_images(new_list, self.keep_filenames))
-            # for _ in range(100):
-            time.sleep(0.3)
-            wait.until_not(EC.visibility_of_element_located((By.CSS_SELECTOR, "block-loading _j_stageloading")))
+
+            image = wait.until(EC.visibility_of_element_located((By.XPATH, '//*[@id="imgArea"]/div[3]/div/div/a/img')))
             for i in range(3):
-                image = self.driver.find_element_by_xpath(search_string)
                 src_link = image.get_attribute("src")
                 if src_link is not None and src_link != "None":
-                    image_urls.append(src_link)
+                    if "sogou" in src_link:
+                        current_link = src_link
+                        isnt_original = True
+                        start_time = time.time()
+                        while isnt_original:
+                            elapsed_time = time.time() - start_time
+                            if elapsed_time > 15:
+                                isnt_original = False
+                            image = self.driver.find_element(By.XPATH, '//*[@id="imgArea"]/div[3]/div/div/a/img')
+                            src_link = image.get_attribute("src")
+                            if current_link != src_link:
+                                image_urls.append(src_link)
+                                isnt_original = False
+                            if len(severe_warnings) != 0:
+                                if severe_warnings[-1]['timestamp'] > timestamp:
+                                    image_urls.append(src_link)
+                                    isnt_original = False
+
+                            severe_warnings = [entry for entry in self.driver.get_log("browser") if
+                                               entry['level'] == 'SEVERE']
+                    else:
+                        image_urls.append(src_link)
                     break
                 time.sleep(0.2)
+            timestamp = int(datetime.datetime.now().timestamp() * 1000)
             for i in range(10):
                 try:
-                    button = self.driver.find_element(By.XPATH, "/html/body/div[3]/div/div[1]/div[1]/a[2]")
-                    button.click()
+                    # button = wait.until(EC.element_to_be_clickable((By.XPATH, "//*[@id='imgArea']/a[2]/span")))
+                    actions = ActionChains(self.driver)
+                    actions.key_down(Keys.ARROW_RIGHT).perform()
                     break
                 except Exception as e:
+                    print(e)
                     time.sleep(1)
                     if i == 9:
                         running = False
